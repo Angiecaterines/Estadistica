@@ -1,0 +1,105 @@
+\documentclass[9pt,letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{makeidx}
+\usepackage{fancyhdr}
+\usepackage{color}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{apacite}
+\usepackage{graphicx}
+%Paquete para hipervinculos
+\date{}
+\usepackage[left=2.54cm,right=2.54cm,top=2.54cm,bottom=2.54cm]{geometry}
+\author{Angie Caterine Sarmiento}
+\title{\textcolor{black}{\bf{ \\ \\  \\ TALLER 1:APRENDIZAJE SUPERVISADO VS. NO SUPERVISADO}}}%%bf para subrayar
+\twocolumn
+\begin{document}
+\maketitle
+\fancypagestyle{plain}{
+\fancyhead[L]{ \includegraphics[scale=0.13]{UEBlogo.png}}
+\fancyhead[C]{Facultad de Ciencias
+\\
+Departamento de Estadistica y Matematicas
+\\
+Minería de datos}}
+Suponiendo que una técnica particular de extracción de datos se va a utilizar en los siguientes casos,
+identifique si la tarea requerida es aprendizaje supervisado o no supervisado (descripción). De ser
+posible determine la tarea específica a realizar: regresión, clasificación, clustering, resumen, modelo
+de dependencia, regla de asociación, detección de anomalías, etc.
+
+\begin{enumerate}
+    \item[a.]   Decidir si otorgar un préstamo a un solicitante en base a datos demográficos y financieros (con
+referencia a una base de datos de datos similares sobre clientes anteriores).
+\\ \\
+\textcolor{blue}{Aprendizaje supervisado,clasificación:} \\
+Se quiere tomar una desición realizar o no un prestamo con base en datos de clientes anteriores anteriores,la variable de respuesta es categorica (Sí, No) por esta razón es una tarea de clasificación como se enuncie en \cite{ramos_aprendizaje_2019}
+        \item[b.] En una librería en línea, hacer recomendaciones a los clientes sobre artículos adicionales para
+comprar según los patrones de compra en transacciones anteriores.
+\\ \\
+\textcolor{red}{Aprendizaje no supervisado,reglas de asociación:} \\ No se cuenta con una varibale de respuesta sobre se quiere sugerir a los clientes de la libreira cierto tipo de productos descubriendo patrones de asociación de compra basandose en clientes anteriores con compras similares.Ademas es un problema de canasta de mercado tipico de reglas de asociación como se enuncia en \cite{timaran_pereira_descubrimiento_2016}
+            \item[c.] Identificar un paquete de datos de la red como peligroso (virus, ataque de hackers) basado en la
+comparación con otros paquetes cuyo estado de amenaza es conocido.
+\\ \\
+\textcolor{red}{Aprendizaje  no supervisado}: \\
+    \item[d.] Identificación de segmentos de clientes similares.
+\\ \\
+\textcolor{red}{Aprendizaje no supervisado,clustering:} \\ 
+Se identifican subgrupos de clientes basandose en la homogeneidad de sus patrones entre intraclase y en la heterogeneidad interclase como se enuncia en \cite{timaran_pereira_descubrimiento_2016}
+        \item[e.] Predecir si una empresa irá a la quiebra basándose en la comparación de sus datos financieros
+con los de empresas similares en bancarrota y no en bancarrota.
+\\ \\
+\textcolor{blue}{Aprendizaje supervisado,clasificación:} \\
+La variable de respuesta es dicotomica(Quiebra, no quiebra) con base en patrones de empresas que han estado o no en bancarrota,las categorias y la variable de respuesta determinan que es un problema de clasificación como se enuncia en \cite{ramos_aprendizaje_2019}
+            \item[f.] Estimación del tiempo de reparación requerido para una aeronave en base a un ticket de
+problema.
+\\ \\
+\textcolor{blue}{Aprendizaje supervisado,regresión:} \\
+La variable de respuesta es continua(tiempo de reparación) por tener certeza en lo que se quiere estimar y en que contamos con una variable de respuesta continua es un problema de clasificación, tal como se menciona en \cite{ramos_aprendizaje_2019}
+                \item[g.] Clasificación automatizada de correo mediante escaneo de código postal.
+\\ \\
+\textcolor{blue}{Aprendizaje supervisado,clasificación}\\ 
+Cada correo tiene un codigo postal  especifico correspondiente a su procedencia, estos son extraidos de una base de datos y cada vez que uno es escaneado el sistema reconoce su lugar de origen
+            \item[h.] Impresión de cupones de descuento personalizados al finalizar la compra de una tienda de
+comestibles según lo que acaba de comprar y lo que otros han comprado anteriormente.
+\\ \\
+\textcolor{red}{Aprendizaje no supervisado,regla de asociación}: \\
+Los descuentos son asignados por agrupamiento de productos (canasta de mercado) ciertos productos en ciertas cantidades basados en compras anteriores imprimen el descuento correpondiente.
+ \item[i.] Identificar automáticamente el tema principal abordado por revistas almacenadas en un
+repositorio en línea.
+\\ \\
+\textcolor{red}{Aprendizaje no supervisado,clustering}\\
+La colección de palabras en cada revista sirven para que se identifiquen patrones de tema de acuerdo al gurpo de palabras que contienen,permiteiendo así identificar el tema principal.
+        \item[j.] Desarrollar perfiles de personas según su orientación política y su posición social.
+        \\ \\
+\textcolor{red}{Aprendizaje no supervisado,clustering}:\\ Se identifican patrones en los perfiles de las personas para así agruparlos se espera que exita homogeneidad dentro del grupo y heterogeneidad entre grupos tal y como se menciona en \cite{timaran_pereira_descubrimiento_2016}
+    \item[k.] Encontrar la relación entre la temperatura de un lugar y diversas variables que miden el grado de
+contaminación presente en el mismo.
+\\ \\
+\textcolor{red}{Aprendizaje no supervisado}: \\ No se cuenta con una variable de respuesta, clustering identificar patrones mas no relación y las reglas de asociación identifican patrones similares(Mas frecuente en marketing)
+        \item[l.] Desarrollar una aplicación para teléfonos móviles que sugiera al usuario la trayectoria más
+adecuada para desplazarse de un punto de la ciudad a otro.
+\\ \\
+\textcolor{red}{Aprendizaje no supervisado,clustering}\\
+Se ulizan datos geograficos que analizan todas las posibles trayectorias y las agrupan de acuerdo a varias especificaciones,como la distancia mas corta el medio de tranporte,la ruta mas frecuente entre otras para determinar la trayectoria mas optima.
+            \item[m.] Desarrollar un dispositivo para el reconocimiento facial de una persona.
+\\ \\
+\textcolor{red}{Aprendizaje no supervisado}\\ Se carga una imagen al dispositivo y se analizan los pixeles de la imagen para identificar los patrones secuenciales de cada rostro y así identificar a la persona mediante una imagen.
+                \item[n.]  Descubierta un nuevo espécimen de insecto determinar con la mayor precisión a qué género
+pertenece dicho insecto.
+\\ \\
+\textcolor{blue}{Aprendizaje supervisado,clasificación}\\
+La variable de respuesta es el género de insecto y es una variable categorica por lo tanto cumple con las caracteristicas para ser tareas de clasificación como se menciona en \cite{ramos_aprendizaje_2019}
+ \item[o.]  Predecir vía imágenes satelitales el nivel de dióxido de carbono emitido por un conglomerado
+industrial.
+\\ \\
+\textcolor{blue}{Aprendizaje supervisado,regresión o clasificación segun como se mida el nivel de dioxido}\\
+La variable de respuesta es nivel de dioxido de carbono aunque el nivel se puede ver como categorias(alto,medio,bajo) tambien se puede ver como una variable continua,si se cumplen estas dos caracteristicas se habra de una tarea de predicción o de clasificación.
+
+                        
+\end{enumerate}
+\bibliographystyle{apacite}
+\bibliography{mineria.bib}
+\end{document}

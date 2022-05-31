@@ -1,0 +1,222 @@
+\documentclass[9pt,letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{makeidx}
+\usepackage{fancyhdr}
+\usepackage{color}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{apacite}
+\usepackage{graphicx}
+%Paquete para hipervinculos
+
+\date{}
+\usepackage[left=2.54cm,right=2.54cm,top=2.54cm,bottom=2.54cm]{geometry}
+\author{Angie Caterine  Sarmiento}
+\title{\textcolor{black}{\bf{ \\ \\  \\ PARCIAL FINAL \\ CORTE 1}}}%%bf para subrayar
+%\twocolumn
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+\maketitle
+\fancypagestyle{plain}{
+\fancyhead[L]{ \includegraphics[scale=0.13]{UEBlogo.png}}
+\fancyhead[C]{Facultad de Ciencias
+\\
+Departamento de Estadistica y Matematicas
+\\
+Minería de Datos}}
+\begin{enumerate}
+    \item  Construya una tabla que resuma,cada variable númerica mínimo, $Q_1$, mediana, media, $Q_3$, máximo y desviación estándar, y para la variable cualitativa las frecuencias y los porcentajes de cada una de sus categorías.
+\\ \\
+\textbf{Variables númericas.}
+<<echo=FALSE,warning=FALSE,message=FALSE>>=
+library(readr)
+library(tidyverse) 
+library(finalfit) 
+library(Amelia) 
+library(DataExplorer) 
+library(mice)
+library(VIM)
+ventas_casas <- read_delim("C:/Users/Hp/Downloads/ventas_casas.csv", 
+			   ";", escape_double = FALSE, trim_ws = TRUE)
+
+names(ventas_casas)<-c("tipo","area.total","año.constru","habitaciones","baños","precio.venta")
+ventas_casas<-ventas_casas%>%mutate(tipo=as.factor(tipo),area.total=as.numeric(area.total))
+#glimpse(ventas_casas)
+n<-dim(ventas_casas)
+
+
+# tarea 1 -----------------------------------------------------------------
+
+aa<-na.omit(ventas_casas)[-1]
+round(apply(aa ,2, function(x) c(Minimo=min(x),Q=quantile(x,probs = 0.25),Mediana=median(x),Media=mean(x),Q=quantile(x,probs = 0.75),Maxímo=max(x),Desviacion=sd(x))),2)
+@
+ \\ \\
+ \textbf{Variable categórica.}
+<<echo=FALSE,message=FALSE,warning=FALSE>>=
+(ventas_casas%>%group_by(tipo)%>%summarise(Total=n(),Porcentaje=(Total/n[1])*100))
+@
+ 
+    \item  Determine el número y el porcentaje de valores faltantes de todo el conjunto de datos. Presente a través de un gráfico apropiado la distribución de este tipo de valores dentro de dicho conjunto.
+ <<echo=FALSE,message=FALSE,warning=FALSE>>=
+   na.number<- function(x){sum(is.na(x))}
+# Porcentaje de NA's con respecto al total de valores
+ cbind("Número de NA's"=na.number(ventas_casas),"Porcentaje de NA's"=(na.number(ventas_casas)/(n[1]*n[2]))*100)
+
+ventas_casas%>%missing_plot()
+@
+    
+  \item  Determine el número y porcentaje de valores faltantes, pero esta vez, dentro de cada una de las seis variables. Construya una tabla de resumén de esta información y un gráfico adecuado.
+   <<echo=FALSE,message=FALSE,warning=FALSE>>=
+a<-apply(ventas_casas, 2, function(x)sum(is.na(x)))
+b<-round((apply(ventas_casas, 2, function(x)sum(is.na(x)))/dim(ventas_casas)[1])*100,2)
+(cbind("Cantidad de NA'S"=a,"Porcentaje de NA's"=b))
+DataExplorer::plot_missing(data=ventas_casas)
+@
+   \item Determine el número y el porcentaje de observaciones (fila) con al menos una variable faltante.
+    <<echo=FALSE,message=FALSE,warning=FALSE>>=
+cc<-sum(apply(ventas_casas, 1, function(x)sum(is.na(x)))>1)
+(data.frame("Observaciones NA's"=cc,"Porcentaje NA's"=(cc/dim(ventas_casas)[1])*100))
+@
+    \item Determine el número y el porcentaje de observaciones con una, dos, tres, cuatro, cinco o seis valores faltantes (por separado como si fueran categorías). Resuma esta información en un gráfico.
+     <<echo=FALSE,message=FALSE,warning=FALSE>>=
+dd<-apply(ventas_casas, 1, function(x)sum(is.na(x)))
+(gg<-ventas_casas%>%mutate(NAS=dd)%>%group_by(NAS)%>%summarise(total=n(),porcentaje=(total/2930)*100))
+gg<-data.frame(valores=round(c(gg$total,gg$porcentaje),2),NAS=rep(c(0,1,2,3),2),tipo=c(rep("total",4),rep("porcentaje",4)))
+ggplot(gg,aes(x=NAS,y=valores,fill=tipo))+
+    geom_bar(stat='identity',
+             position = "Dodge")+ 
+    coord_flip()+
+    theme_light()
+@
+ \item  De acuerdo a los resultados obtenidos en las tareas anteriores, tome una decisión: eliminar filas, columnas (ambas) con NA's o aplicar un método de imputación. Justifique su elección.
+\\ \\
+Al revisar los porentajes de NA's en el conjunto de datos se decide realizar 
+ imputación.Se encuentra un gran volumen de NA's, si se eliminará se perderia información en la predicción. \\ \\
+
+  \item  Si la decisión en la trea 6 fue imputar valores, realice esta tarea:
+  \begin{enumerate}
+      \item [a)] Cree (y presente) una función que permita realizar imputación simple por muestreo aleatorio sin importar el tipo de variable. Aplique esta función al conjunto de datos con NA's.
+        <<echo=T,message=FALSE,warning=FALSE>>=
+
+rand.imput <-function(x){
+	missing <- (is.na(x)) #vector booleano
+	n.missing <- sum(missing)#Numero de NA’s
+	x.obs <- x[!missing]#Datos no NA
+	imputed <- x
+	imputed[missing] <- sample(x.obs,n.missing,replace = T)
+	#Se extrae una muestra aleatoria conocida y se remplazan estos en los NA
+	return(imputed)}
+ventas_casa1<-data.frame(tipo=rand.imput(ventas_casas$tipo),
+		area.total=rand.imput(ventas_casas$area.total),
+		año.constru=rand.imput(ventas_casas$año.constru),
+		habitaciones=rand.imput(ventas_casas$habitaciones),
+		baño=rand.imput(ventas_casas$baños))
+head(ventas_casa1)
+@
+ 
+<<>>=
+tail(ventas_casa1)
+@
+     
+      \item [b)] Impute los NA's de todas las variables mediante distribuciones no condicionadas (Algoritmo KNN) y,
+        <<echo=T,message=FALSE,warning=FALSE>>=
+
+imputacionKnn<-VIM::kNN(data=ventas_casas,
+			variable = c("tipo","area.total","año.constru","habitaciones",
+				     "baños"),
+			k=5,numFun=mean,catFun=maxCat)
+head(imputacionKnn[1:6])
+@
+
+<<>>=
+tail(imputacionKnn[1:6])
+@
+     
+      \item [c)] Impute los NA's de todas las variables mediante imputación múltiple por el algoritmo MICE. 
+   <<echo=TRUE,message=FALSE,warning=FALSE>>=
+multimp.mice<-mice::mice(ventas_casas,m = 5)
+imput.mice<-complete(multimp.mice)
+head(imput.mice)
+@
+
+<<>>=
+tail(imput.mice)
+@
+      
+      \\ \\
+\textbf{¿Cuál de las tres imputaciones es la más eficiente y adecuada para usted? Argumente y justifique su elección mostrando evidencia numérica o gráfica }
+\\ \\
+Se utiliza el test kolmogorov smirnov para las variables numericas y un test chi-cuadrado para las variables categoricas y así determinar si la distribución de los datos ha cambiado al realizar las imputaciones. \\ \\
+\textbf{Sistema de hipotesis de la prueba Kolmogorov-smirnov} \\ \\
+\(H_o: X\) proviene de un modelo probabilistico particular con función de distribución $F(x)$. \\ 
+\(H_a:X\) proviene de cualquier otro modelo probabilistico con función de distribución $G(x)\neq F(X).$ \\ 
+Matematicamente,este sistema de hipotesis se traduce a:
+\[H_o: F(X) = F^{*}(X) \]
+\[H_a: F(X) \neq F^{*}(X) \]
+\textbf{Sistema de hipotesis de la prueba chi-cuadrado} \\ \\
+\[H_o: O_i = E_i \]
+\[H_a: O_i \neq E_i) \]
+\textbf{Pruebas de bondad de ajuste para los valores imputados por el muestreo aleatorio simple} 
+<<echo=TRUE,message=FALSE,warning=FALSE>>=
+chisq.test(x=ventas_casas$tipo,y=ventas_casa1$tipo)
+ks.test(x=ventas_casas$area.total,y=ventas_casa1$area.total)
+ks.test(x=ventas_casas$año.constru,y=ventas_casa1$año.constru)
+ks.test(x=ventas_casas$habitaciones,y=ventas_casa1$habitaciones)
+#ks.test(x=ventas_casas$baños,y=ventas_casa1$baños)
+@
+  No se rechaza la hipotesis nuela en las pruebas kolmogorov.\\ \\
+   \textbf{Pruebas de bondad de ajuste para los valores imputados por el metodo KNN} 
+<<echo=TRUE,message=FALSE,warning=FALSE>>=
+chisq.test(x=ventas_casas$tipo,y=imputacionKnn$tipo)
+ks.test(x=ventas_casas$area.total,y=imputacionKnn$area.total)
+ks.test(x=ventas_casas$año.constru,y=imputacionKnn$año.constru)
+ks.test(x=ventas_casas$habitaciones,y=imputacionKnn$habitaciones)
+ks.test(x=ventas_casas$baños,y=imputacionKnn$baños)
+@
+
+No se rechaza la hipotesis nula en las pruebas kolmogorov y el valor p es muy cercano a 1,es decir que la distribución de los datos teorica es igual a la impirica que se obtuvo al imputar por el método KNN. \\ \\
+   \textbf{Pruebas de bondad de ajuste para los valores imputados por el metodo MICE} 
+<<echo=TRUE,message=FALSE,warning=FALSE>>=
+chisq.test(x=ventas_casas$tipo,y=imput.mice$tipo)
+ks.test(x=ventas_casas$area.total,y=imput.mice$area.total)
+ks.test(x=ventas_casas$año.constru,y=imput.mice$año.constru)
+ks.test(x=ventas_casas$habitaciones,y=imput.mice$habitaciones)
+ks.test(x=ventas_casas$baños,y=imput.mice$baños)
+@
+   No se rechaza la hipotesis nula en las pruebas kolmogorov y el valor p es 1,es decir que la distribución de los datos teorica es igual a la impirica que se obtuvo al imputar por el método MICE. \\ \\
+El mejor metodo de imputación fue imputacion multivariada por ecuaciones encadenadas(MICE),ya que al realizar pruebas de bondad de ajuste entre la distribución teorica de los datos para cada variable y la distribución empirica(la imputada por el metodo MICE) se evidencia que las distribuciónes de las variables no difieren y su valor p es 1.
+      
+  \end{enumerate}
+   \item  Con los datos ya imputados (por el método que usted escogió como el mejor),ajuste un modelo lineal de regresión múltiple tomando como una variable de respuesta (Precio.venta) y como variable explicativa las demás variables.Reporte el modelo ajustado (con coeficiente de regresión estimados).
+<<echo=TRUE,message=FALSE,warning=FALSE>>=
+
+train<-imput.mice%>%mutate(precio.venta=factor(precio.venta))
+
+modelo<-lm(formula = precio.venta~as.factor(tipo)+area.total+año.constru+
+	   	habitaciones+baños,data=train)
+round(coef(modelo),2)
+
+@
+   
+    \item Prediga el precio de venta de los siguientes inmuebles con base en el modelo ajustado en el item anterior,y sus correspondientes perfiles, y complete esta tabla:
+<<echo=TRUE,message=FALSE,warning=FALSE>>=
+new<-data.frame(tipo=as.factor(c("apartamento","apartamento","casa","Duplex")),
+area.total=c(12567,45250,100225,8066),año.constru=c(1965,2010,1905,1942),
+habitaciones=c(2,2,1,4),baños=c(1,2,1,2))
+
+prediccion<-predict(object = modelo,newdata = new)
+cbind(new,prediccion)
+@
+    
+\end{enumerate}
+
+\bibliographystyle{apacite}
+\bibliography{mineria.bib}
+
+\\
+Ramos, D.  (2020).\textit{Detección y tratamiento de datos faltantes: missing data}
+
+\end{document}

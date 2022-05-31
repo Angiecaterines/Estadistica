@@ -1,0 +1,253 @@
+\documentclass[11pt,letterpaper]{article} 
+\usepackage[utf8]{inputenc} 
+\usepackage[spanish, es-tabla, es-nodecimaldot]{babel} % Formato a español
+\usepackage[T1]{fontenc}    % Permite utilizar otras tipografías
+\usepackage[vmargin=2.5cm,hmargin=2cm]{geometry}
+\usepackage{multicol}   % Unir columnas en tablas y formato a dos columnas
+\usepackage{multirow}   % Unir filas en tablas
+\usepackage{graphicx}   % Necesario para insertar gráficas
+\usepackage{float}      % Corregir ubicación de imágenes y tablas
+%\usepackage{subfigure} % Insertar subfiguras
+%\usepackage{url}       % Hiervínculo a direcciones URL
+\usepackage{listings}
+\usepackage{flushend}
+\usepackage{minted}
+\usepackage[none]{hyphenat} % Permite utilizar el comando \sloppy
+\usepackage[small]{caption}	% Reduce el tamaño de letra utilizado en los pies de figura.
+\usepackage{hyperref}   % Agrega enlaces internos de las secciones, figuras y tablas.
+\usepackage{color}      % Definición de colores
+    \hypersetup{colorlinks=true, linkcolor=[rgb]{0,0,1}, citecolor=[rgb]{0,0,1}}
+\usepackage{xcolor}		% Permite definir un color para utilizarlo dentro del documento.
+    \definecolor{gris}{RGB}{70,70,70}	% Definiendo el color gris
+    \definecolor{negro}{RGB}{40,40,40}		% Definiendo el color negro
+
+%%%%%%%% Modificación de los espacios de los títulos de secciones %%%%%%%%%%
+\usepackage{titlesec}		% Permite reconfigurar  los títulos de las secciones y subsecciones
+\renewcommand\thesection{\Roman{section}}	% Numeración romana en las secciones
+\renewcommand\thesubsection{\Roman{subsection}}		% Numeración romana en las subsecciones
+\titlespacing*{\section}{0pt}{2.5mm}{0mm}	% Espaciado del título {espacio izquierdo}{arriba del título}{abajo del título}
+\titleformat{\section}[block]{\large\scshape\centering}{\thesection.}{1em}{}	% Espaciado del título de las secciones
+\titleformat{\subsection}[block]{\large}{\thesubsection.}{1em}{}				% Espaciado del título de las subsecciones
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Se define un comando \colorhrule para hacer líneas horizontales de color con 3 argumentos: color, largo, ancho.
+\newcommand{\colorhrule}[3]{\begingroup\color{#1}\rule{#2}{#3}\endgroup}
+
+\setlength{\intextsep}{1mm} % Distancia superior e inferior en objetos flotantes
+\setlength{\columnsep}{5mm} % Separación entre columnas del documento
+
+\begin{document}
+\sloppy     % Evita que las palabras se corten al saltar de línea.
+\begin{center}
+\begin{tabular}{cc}
+\multirow{2}{3.5cm}{\includegraphics[width=4cm]{UEBlogo.png}}	& \huge{\textsc{\textbf{Universidad El Bosque}}}\\ %\vspace{5mm}
+ & \scriptsize{\textsc{FACULTAD DE CIENCIAS}}\\[5mm]
+ & \Large{\textsf{\textbf{Modelos ML para regresión y clasificación}}}\\
+ & \small{\textsf{Angie Caterine Sarmiento Gonzalez [1233507154]}}\\ \vspace{5mm}
+ %& \small{\textsf{Nombre completo de alumno 2 [Código]}}\\
+ & \small{\textsc{Estadística $|$ Minería de Datos}}\\
+ & \today\\
+\end{tabular}
+\end{center}
+	
+
+\begin{center}
+\colorhrule{black}{16.5cm}{1.2pt}
+\end{center}
+
+\section*{\textbf{Actividad}}
+
+Construir y validar el modelo de regresión más potente para predecir el precio de venta Price de un automóvil nuevo con base en las variables predictoras $X1$=KM (kilometraje), $X2$=Age (años de uso) y $X3$=Weight (peso)
+
+\section*{\textbf{Pasos a seguir}}
+\begin{enumerate}
+
+    \item Seleccione en un mismo data frame las variables de interés.
+<<echo=FALSE,message=FALSE,warning=FALSE>>=
+library(tidyverse)
+library(FNN)
+library(DataExplorer)
+library(plotly)
+library(ggplot2)
+library(gridExtra)
+@
+    
+<<echo=FALSE,message=FALSE,warning=FALSE >>=
+# Se carga la base toyota 1436 autos explicadps en 10 varibles
+toyota<-read_delim("C:/Users/Hp/Downloads/toyota.csv", ";", escape_double = FALSE, trim_ws = TRUE,)
+
+# Se selecciona únicamente las variables Price (Y) y KM (X1) Age(X2) Weight(X3)
+datos<-toyota %>% select(KM,Age,Weight,Price) %>% mutate_all(as.double)
+head(datos)
+@
+
+
+\item Construya una conjunto de entrenamiento (75\%) y otro de prueba (25\%). Tome la semilla 12345
+    
+<<echo=TRUE,message=FALSE,warning=FALSE >>=
+# Seleccionar siempre la misma partición
+set.seed(12345)
+
+# Muestra aleatoria del 75% de las filas del conjunto "datos" para el conjunto de entrenamiento
+train.filas<-sample(x=row.names(datos),size = dim(datos)[1]*0.75)
+
+# CONJUNTO DE ENTRENAMIENTO (selección de columnas)
+train.set<-datos[train.filas,]
+train1<-train.set %>% mutate_if(is.numeric,scale)
+dim(train.set)
+
+
+# CONJUNTO DE PRUEBA
+test.filas<-setdiff(x = row.names(datos),train.filas)
+test.set<-datos[test.filas,]
+test.set1<- test.set %>% mutate_if(is.numeric,scale)
+dim(test.set)
+@
+
+    \item Entrene los cinco modelos con base en el conjunto de entrenamiento y almacene los correspondientes precios predichos para los automóviles de dicho conjunto.
+    \\ \\
+    \textbf{Modelo 1}: un modelo de regresión lineal múltiple:
+    \[Y= \beta_0 + \beta_1X_1 + \beta_2X_2 + \beta_3X_3 + \epsilon\]
+    
+<<>>=
+modelo1<-lm(Price~KM+Age+Weight,data=train.set)
+@
+
+    \textbf{Modelo 2}:un modelo de regresión múltiple de grado 3:
+    \[Y= \beta_0 + \beta_1X_1 + \beta_2X_2^2 + \beta_3X_3^3 + \epsilon\]
+<<>>=
+modelo2<-lm(Price~KM+(Age^2)+(Weight^3),data=train.set)
+@
+
+    \textbf{Modelo 3}:Un modelo ajustado por algoritmo kNN con $k=10$ vecinos más próximos.
+<<>>=
+modelo3<-FNN::knn.reg(train = train.set,y =train.set$Price,k = 10)
+@
+     
+     \textbf{Modelo 4}:Un modelo ajustado por algoritmo kNN con $k=10$ vecinos más próximos sobre las variables normalizadas $Z_1$, $Z_2$ y $Z_3$.
+<<>>=
+modelo4<-FNN::knn.reg(train =train1 ,y =train1$Price,k = 10)
+@
+
+\textbf{Modelo 5}: Un modelo generalizado
+
+   <<>>=
+# Precios predichos según modelo 1
+yhat_mod1<-predict(object = modelo1)
+
+# Precios predichos según modelo 2
+yhat_mod2<-predict(object = modelo2)
+
+# Precios predichos según modelo 3
+yhat_mod3<-modelo3$pred
+
+# Precios predichos según modelo 4
+yhat_mod4<-modelo4$pred
+
+
+# Se almacenan junto al conjunto de entrenamiento
+tabla1<-train.set %>% 
+	mutate(Price_pred1=yhat_mod1,
+	       Price_pred2=yhat_mod2,
+	       Price_pred3=yhat_mod3,
+	       Price_pred4=yhat_mod4)
+tabla1
+@  
+
+    \item Estime (y almacene) los correspondientes errores cuadráticos medios de entrenamiento MSEE de los cinco modelos ¿Cuál modelo ajustó mejor al conjunto de entrenamiento?
+    
+<<echo=F,warning=FALSE,message=FALSE>>=
+# Se accede a las columnas de tabla1
+attach(tabla1)
+
+# MSE del modelo 1
+MSE_m1<-mean((Price-Price_pred1)^2)
+
+# MSE del modelo 2
+MSE_m2<-mean((Price-Price_pred2)^2)
+
+# MSE del modelo 3
+MSE_m3<-mean((Price-Price_pred3)^2)
+
+# MSE del modelo 4
+MSE_m4<-mean((Price-Price_pred4)^2)
+
+# MSE del modelo 5
+#MSE_m5<-mean((Price-Price_pred5)^2)
+
+
+
+# Tabla comparativa
+tablaMSEE<-data.frame(MSE_m1,MSE_m2,MSE_m3,MSE_m4)
+tablaMSEE%>%sort(decreasing = F)
+@
+
+    \item Evalúe los modelos entrenados en el paso 4 utilizando el conjunto de prueba y almacene los correspondientes precios predichos para los automóviles de dicho conjunto.
+
+<<echo=FALSE,message=FALSE,warning=FALSE>>=
+# Evaluación y Precios predichos por el modelo 1 
+yhato_mod1<-predict(modelo1,newdata = test.set)
+
+# Evaluación y Precios predichos por el modelo 2
+yhato_mod2<-predict(modelo2,newdata = test.set)
+
+################################################################################
+
+# Evaluación del modelo 3 kNN con k=10 vecino más próximo
+eval3<-knn.reg(train = train.set, # Sólo predictoras de train.set
+	       test = test.set,   # Sólo predictoras de test.set
+	       y = train.set$Price,   # Sólo respuesta de train.set
+	       k = 10)
+
+# Precios predichos por el modelo 3 para autos del conjunto de prueba
+yhato_mod3<-eval3$pred
+
+################################################################################
+
+# Evaluación del modelo 4 kNN con k=10 vecinos más próximos
+eval4<-knn.reg(train = train1,test = test.set1,y = train1$Price ,k= 10)
+
+# Precios predichos por el modelo 3 para autos del conjunto de prueba
+yhato_mod4<-eval4$pred
+
+# ################################################################################
+# 
+# # Evaluación del modelo 5 kNN con k=10 vecinos más próximos
+# eval4<-knn.reg(train = train.set,test = test.set[,1],y = train.set$Price,k = 10)
+# 
+# # Precios predichos por el modelo 5 para autos del conjunto de prueba
+# yhato_mod4<-eval4$pred
+
+# Se almacenan junto al conjunto de entrenamiento
+tabla2<-test.set %>% 
+	mutate(Price_pred1=yhato_mod1,
+	       Price_pred2=yhato_mod2,
+	       Price_pred3=yhato_mod3,
+	       Price_pred4=yhato_mod4)
+tabla2
+@
+\item estime (y almacene) los correspondientes errores cuadráticos medios de prueba MSEP de los cinco modelos.
+
+    
+    \item Compare visualmente los MSEE y MSEP de los cinco modelos. A su criterio ¿Cuál modelo escogería para predecir el precio de nuevos autos? Justifique
+    \item Con base en el modelo que seleccionó en el punto 7, prediga el precio que tendrán los siguientes tres automóviles con perfiles:
+    \begin{table}[H]
+        \centering
+        \begin{tabular}{|c|c|c|c|}\hline
+           \textbf{Automovil}  &  \textbf{KM} & \textbf{Age} & \textbf{Weight} \\ \hline
+             1 & 60.000 &30 & 1.300 \\ \hline
+            2 & 22.000 & 25  & 1.500 \\ \hline
+           3 &  3.000 & 4  & 1.070 \\ \hline
+            
+        \end{tabular}
+        \caption{Caracteristicas de los nuevos autos}
+        \label{tab:my_label}
+    \end{table}
+\end{enumerate}
+\begin{thebibliography}{1} % Bibliography - this is intentionally simple in this template
+\bibitem{presentation} Ramos David,
+\newblock{\em Evaluación de modelos para regresión: Ejemplo},
+\newblock  (2020).
+
+\end{thebibliography}
+\end{document}

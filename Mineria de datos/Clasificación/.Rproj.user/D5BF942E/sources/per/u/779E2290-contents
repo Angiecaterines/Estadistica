@@ -1,0 +1,34 @@
+# Entornos para manejo de tablas, gráficas y datos
+library(tidyverse)
+library(gridExtra)
+library(AmesHousing) # Paquete con conjunto de datos
+
+# El paquete caret para realizar ML: regresión lineal para predicción
+library(caret)
+
+# Conjunto ames preprocesada
+ames<-AmesHousing::make_ames()
+
+#Dimensiones
+dim(ames)
+
+# Encabezado del conjunto
+dplyr::slice(ames,1:3)
+
+set.seed(123)  # semilla para reproducibilidad
+
+# Selección aleatoria de filas de ames
+id.propiedad<-caret::createDataPartition(y = ames$Sale_Price,p = 0.7,list = F)
+
+# Conjunto de entrenamiento: training set
+train<-ames[id.propiedad, ]
+dim(train)
+
+
+# Conjunto de prueba: test set 
+test<-ames[-id.propiedad, ]
+dim(test)
+
+
+# Coeficiente estimado de correlación lineal de Pearson
+r<-cor(train$Sale_Price,train$Gr_Liv_Area); r

@@ -1,0 +1,293 @@
+---
+title: <span style="color:Blue"> MODELOS ESPACIALES  </span>
+author: "Angie Caterine Sarmeinto"
+date: "20/4/2021"
+output: slidy_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r,echo=F,warning=FALSE,message=FALSE}
+# Paquetes ----------------------------------------------------------------
+
+library(ggplot2)
+library(mapview)
+library(tidyverse)
+library(RColorBrewer)
+library(sf)
+library(classInt)
+library(magic)
+library(maptools)
+library(readxl)
+library(raster) 
+library(spdep) 
+library(spData)
+library(ape)
+library(sp)
+library(rgdal)
+library(rgeos)
+library(tmap)
+library(spgwr)
+library(grid)
+library(gridExtra)
+library(spatialreg)
+
+# Datos -------------------------------------------------------------------
+
+# Casos de covid Bogotá
+covidb <- read_excel("C:/Users/Hp/Downloads/covidb.xlsx")
+
+ # shape file de Bogotá
+bo3<-read_sf("C:/Users/Hp/Downloads/Loca.shp") %>% arrange(LocNombre)
+
+# Población total de Bogotá 2020
+poblacion <- read_excel("C:/Users/Hp/Downloads/pobo.xlsx")
+#proyecciones de población  bogotá 2016-2020
+
+# Resignación de nombres,formato estandár -------------------------------
+
+covidb<-covidb %>% rename("LocNombre"="Localidad de residencia") %>% mutate(LocNombre=toupper(LocNombre),LocNombre=chartr("ÁÉÍÓÚ", "AEIOU", toupper(LocNombre))) 
+covidb<-covidb %>% filter(LocNombre!="FUERA DE BOGOTA")
+bo3$LocNombre<-replace(bo3$LocNombre,bo3$LocNombre=="CANDELARIA", "LA CANDELARIA")
+covidb %>% group_by(LocNombre) %>% summarise(Total=n())->k
+
+# II CREACIÓN BASE DE DATOS POR LOCALIDAD CON LAS SIGUIENTES VARIBLES
+
+# 1.Edad promedio por localidad 
+p=covidb%>% group_by(LocNombre) %>%  summarise(promedio=mean(Edad),desviación=sd(Edad))
+
+# 2. Casos de coronavirus por localidad 
+a=data.frame(table(covidb$LocNombre))
+# 3. caso de coronavirus por sexo 
+t=as.data.frame(table(covidb$LocNombre, covidb$Sexo)) 
+m=filter(t,Var2=="M")
+fe=filter(t,Var2=="F")
+
+# 4. casos de coronavirus por estado 
+fa=data.frame(table(covidb$LocNombre,covidb$Estado))
+f=filter(fa,Var2=="Fallecido") 
+r=filter(fa,Var2=="Recuperado")
+
+# 5.Creación de base de datos para unir al shapelile 
+casoslocalidad=data.frame(bo3$LocNombre,p$promedio, a$Freq, m$Freq, fe$Freq, f$Freq, r$Freq)
+colnames(casoslocalidad)=c("LocNombre", "edad", "casos", "hombres", "mujeres", "fallecidos", "Recuperados")
+
+#IV.Unir  casoslocalidad ( casos de coronavirus) y población (población por localidad)#########
+# calcular casos por km2 y millon de habitantes 
+base=merge(casoslocalidad, poblacion, by="LocNombre")  
+
+mcas=round(1000000*base$casos/base$Poblacion,0) # casos por millon de habitantes
+mprop=round(1000000*base$fallecidos/base$casos,0) # proporción de muertos
+mfal=round(1000000*base$fallecidos/base$Poblacion,0) # fallecidos por millon 
+mrec=round(1000000*base$Recuperados/base$Poblacion,0) # recueperados por millon
+
+# variables eternas que pueden influir
+
+covid19=cbind(base,mcas,mprop,mfal,mrec)
+
+
+bogota=merge(bo3,covid19, by="LocNombre", all.x=TRUE) # une shapefile con archivo externo 
+```
+
+# Modelos espaciales
+
+\[Yi=\rho W_iY_i + \beta X_i + \theta W_iX_i + \epsilon_i\]
+
+con $\epsilon_i=\lambda W_i \epsilon_i + \mu_i$
+
++ Modelo regresión Lineal
+\[Y_i=X_i\beta + \epsilon_i\]
+
+```{r,echo=TRUE}
+mn<-lm(covid19$casos~covid19$Salud+covid19$Ingresos_P)
+summary(mn)
+AIC(mn)
+```
+
+Se verifica si existe una posible autorrelación en los residuales
+
+```{r,echo=FALSE}
+r=mn$residuals
+shapiro.test(r)
+
+```
+
+
+```{r}
+l1=poly2nb(bogota,row.names=bogota$LocNombre, queen=TRUE)
+w1=nb2listw(l1, style='B')
+mr1=moran(r,w1,n=10,S0 = Szero(w1))
+gr1=geary(r,w1,n=length(bogota),n1 = length(bogota)-1,S0 = Szero(w1) )
+i=c(Moran=mr1$I,Geary=gr1$C);i
+```
+
+El indice de Moran nos muestra que la distribución de los casos de coronavirus es similar a sus vecinos mas lejanos. Del mismo modo el indice de Geary representa una autorrelación negativa.
+
++ Test moran de autocorrelación espacial en los residuales
+
+```{r}
+moran.test(r,w1)
+```
+
+No se rechaza la hipotesis nula es decir no existe autocorrelación espacial en los redisuales.
+
+```{r}
+d0<-matrix(c("MRL",NA,"Todas",NA,NA,round(AIC(mn),4)),nrow=1)
+colnames(d0)<-c("Modelo","Párametro","Variables_sig","Likelihod ratio","Wald S","AIC");d0
+```
+
+- Modelo ajustado
+\[\widehat{Casos_i}=0.00027 - 0.0341 \ \textit{Salud} - 0.00414 \ Ingreso.P +\epsilon_i\]
+
++ Modelo de error espacial
+
+Se utilizan cuando se sospecha de autocorrelación espacial en los residuales
+
+\[Y_i=X_i\beta + \lambda W_i \epsilon_i + \epsilon_i\]
+
+```{r,message=FALSE,warning=FALSE}
+l1=poly2nb(bogota,row.names=bogota$LocNombre, queen=TRUE) 
+w1=nb2listw(l1, style='B')
+mle =errorsarlm(mn,data=bogota,w1)
+(sem<-summary(mle))
+```
+
+```{r}
+d1<-matrix(c("SES",round(sem$lambda,4),"Todas",round(sem$LR1$p.value,4),round(sem$Wald1$p.value,5),round(AIC(sem),4)),nrow=1)
+colnames(d1)<-c("Modelo","Párametro","Variables_sig","Likelihod ratio","Wald S","AIC");d1
+```
+Del modelo de error espacial su párametro $\lambda<0$ indica los errores en la ubicación i de los casos de coronavirus se parecen a los errores en la ubicación i de los vecinos mas lejanos.Tambien se evidencia que todas las variables son significativas y  que tanto la prueba LR para dependencia espacial como la prueba de Walds muestran que no existe dependencia espacial.
+
+\[\widehat{Casos}= 0.00026 - 0.03272*Salud - 0.00396*Ingreso -0.24217*Wi + ei\]
+
++ Modelo de retardo espacial
+
+Se utiliza cuando se sospecha de dependencia espacial con la variable dependiente.
+
+\[Y_i=X_i \beta +\rho W_iY_i +\epsilon_i \]
+```{r}
+ms<-lagsarlm(mn,data=bogota,w1)
+(sars<-summary(ms))
+```
+
+```{r}
+d2<-matrix(c("SARS", round(sars$rho,4),"Todas",round(sars$LR1$p.value,4),round(sars$Wald1$p.value,5),round(AIC(sars),4)),nrow=1)
+colnames(d2)<-c("Modelo","Párametro","Variables_sig","Likelihod ratio","Wald S","AIC");d2
+```
+El modelo de rezago espacial muestra que su parámetro $\rho=-0.16$ presenta depencia espacial negativa, es decir que la distribución espacial de los casos de coronavirus se parece a sus vecinos mas lejanos.Todas las variables del modelo son significativas y las pruebas de LR y Wald muestran independencia espacial
+
+- Modelo ajustado
+\[\widehat{Casos}= 0.00029 - 0.03476*Salud - 0.00396*Ingreso -0.16773*W_i \ Casos_i + e_i\]
+
++ Modelo Durbin
+
+Este modelo se utiliza cuando se sospecha de dependencia espacial en la variable dependiente y sus covariables.
+
+\[Y_i=X_i \beta + \rho W_iY_i + \theta W_iX_i\]
+```{r}
+
+md =errorsarlm(mn,data=bogota,w1,Durbin = T,tol.solve = 1e-30)
+(med<-summary(md))
+```
+
+
+```{r}
+d3<-matrix(c("DM",round(med$lambda,4),"Inter,Salud,Ingreso",round(med$LR1$p.value,4),round(med$Wald1$p.value,5),round(AIC(med),4)),nrow=1)
+colnames(d3)<-c("Modelo","Párametro","Variables_sig","Likelihod ratio","Wald S","AIC");d3
+```
+
+Existe autocorrelación espacial negativa es decir que la distribución de los casos de coronavirus se parece a sus vecinos mas lejanos sin embargo se rechaza la hipotesis nula de depencia espacial.
+
+- Modelo Ajustado
+\[\widehat{Casos}=0.00029 - 0.0354 \ Salud - 0.00307 \ Ingresos - 0.2972\ W_i \ Casos_i - 0.0019*(0.246 \ W_i \ Salud + 0.000022 \ W_i\ Ingresos) + ei\]
+
++ Modelo Mixto autoregresivo espacial con errores autorregresivos
+
+\[Y_i= X_i \beta +\rho W_i\ Casos_i \  \lambda + \epsilon_i\]
+```{r}
+mx=sacsarlm(mn,data=bogota,w1,type = "sac",tol.solve = 1e-30)
+mx<-summary(mx)
+```
+
+```{r}
+d4<-matrix(c("SARAR","Rho=-0.12,Lambda=-0.20","Todas",round(mx$LR1$p.value,4),round(mx$Wald1$p.value,4),round(AIC(mx),4)),nrow=1)
+colnames(d4)<-c("Modelo","Párametro","Variables_sig","Likelihod ratio","Wald S","AIC");d4
+```
+
+Existe autocorrelación negativa tanto en los errores como espacialmente, es decir que la distribución residual y geografica de los casos de coronavirus se parece a sus vecinos mas cercanos y no a sus más proximos.
+
+-Modelo Ajustado
+\[\widehat{Casos}=0.00030 - 0.0362\ Salud - 0.0040 \ Ingreso + 0.126\ W_i \ Casos_i \ 0.209 + ei\]
+
++ Modelo Durbin de error espacial
+
+Este modelo es usado cuando se sospecha de autocorrelación en la variable dependiente y las covariables pero tambien se sospecha de autocorrelación en los residuales.
+
+\[Y_i=X_i \beta +\lambda W_iY_i + \theta W_i X_i +e \]
+```{r}
+
+mede <- errorsarlm(mn, data = bogota, w1, etype = "emixed",tol.solve = 1e-30)
+mede<-summary(mede)
+```
+
+```{r}
+d5<-matrix(c("SDEM",-0.29,"Inter,Salud,Ingreso",round(mede$LR1$p.value,4),round(mede$Wald1$p.value,4),round(AIC(mede),4)),nrow=1)
+colnames(d5)<-c("Modelo","Párametro","Variables_sig","Likelihod ratio","Wald S","AIC");d5
+```
+
+Existe una autocorrelación espacial negativa en los residuales y se rechazan las hipotesis de depencia espacial,es decir que la distribución residual de los casos de covid se parece con sus vecinos lejanos.
+- Modelo Ajustado
+
+\[\widehat{Casos}= 0.00029 - 0.0354\ Salud - 0.00307\ Ingreso -0.2972 \ W_i \ Casos_i  -0.0019*(0.2464 \ Salud + 0.000022 \ Ingreso) + ei\]
+
+# Normalidad de residuales y dependencia espacial
+
++ Sistema de hipotesis Test shapiro
+
+$Ho$:Existe normalidad en los erroes
+
+$Ha$:No existe normalidad
+
++ Sistema de hipoesis Moran.Test
+
+
+$H_0:I=0$
+
+$H_a:I>0$
+
+```{r}
+n0<-shapiro.test(mn$residuals)$p.value
+n1<-shapiro.test(sem$residuals)$p.value
+n2<-shapiro.test(sars$residuals)$p.value
+n3<-shapiro.test(med$residuals)$p.value
+n4<-shapiro.test(mx$residuals)$p.value
+n5<-shapiro.test(mede$residuals)$p.value
+
+# moran test
+mt0<-moran.test(mn$residuals,w1)
+mt1<-moran.test(sem$residuals,w1)
+mt2<-moran.test(sars$residuals,w1)
+mt3<-moran.test(med$residuals,w1)
+mt4<-moran.test(mx$residuals,w1)
+mt5<-moran.test(mede$residuals,w1)
+
+normalidad<-matrix(c(n0,n1,n2,n3,n3,n5),nrow=6)
+I.moran<-matrix(c(mt0$statistic,mt1$statistic,mt2$statistic,mt3$statistic,mt4$statistic,mt5$statistic),nrow=6)
+T.moran<-matrix(c(mt0$p.value,mt1$p.value,mt2$p.value,mt3$p.value,mt4$p.value,mt5$p.value),nrow = 6)
+rr<-cbind(normalidad,I.moran,T.moran)
+colnames(rr)<-c("Shapiro(p.valor)","Indice Moran","Test.Moran")
+rownames(rr)<-c("OLS","SEM","SAR","DM","SARAR","SDEM");rr
+```
+Se evidencia que los residuales de todos los modelos se distribuyen de forma normal, adicionalmente el incide de Moran en los 6 modelos evidencia que existe una autocorrelación negativa wn los residuales y ademas en los 6  no se rechaza la hipotesis de dependencia espacial,en los residuales de los modelos no existe autocorrelación espacial.
+
+# Selección del mejor modelo 
+```{r}
+aa<-rbind(d0,d1,d2,d3,d4,d5)
+cbind(aa,round(rr,2))
+```
+
+Los modelos candidatos a ser los mejores son el modelo de error espacial y el modelo de rezago espacial ya que estos modelo presentan el AICmas bajo y todas sus variables fueron significativas sin embargo el modelo de rezago espacial detecta un mayor indice de moran es decir detecta mayor autocorelación espacial.Por lo tanto el mejor modelo es:
+
+\[\widehat{Casos}= 0.00029 - 0.03476*Salud - 0.00396*Ingreso -0.16773*W_i \ Casos_i + e_i\]

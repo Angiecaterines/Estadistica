@@ -1,0 +1,180 @@
+---
+title: <span style="color:Blue"> **Transformacion de Box-Cox** </span>
+author: "Angie Caterine Sarmiento y José Villamizar"
+date: "13 octubre de 2020"
+output: slidy_presentation
+---
+
+```{r setup, include=FALSE,fig.align='center'}
+knitr::opts_chunk$set(echo = FALSE)
+```
+# <span style="color:Blue"> **¿Qué es la transformación Box Box?** </span>
+
+
+Las transformaciones de Box y Cox hace parte de la familia de transformaciones de potencia paramétricas, es utilizada para:
+
++ Corregir sesgos en la distribución de errores.
++ Corregir la no normalidad. 
++ Corregir la heterocedasticidad.
+
+
+Esta transformación recibe el nombre de los estadísticos George E. P. Box y David Cox.
+
+<span style="color:Blue"> **¿De donde proviene la transformación?** </span>
+====
+
+La familia de transformaciones de potencia es de la forma:
+\[Y'= Y^{\lambda}\]
+Donde $\lambda$ es un párametro que debe ser determinado de los datos
+
+\[\begin{matrix} \lambda= 2.0 \ \ & & Y'=Y^2 \ \ \ \\ \lambda= 0.5 \ \ & & Y'=\sqrt{Y} \ \ \\ \lambda= 0.0 \ \ & & Y'= log_eY \\ \lambda=-0.5 & & Y'=\cfrac{1}{\sqrt{Y}}\ \ \ \\ \lambda=-1.0 & & Y'= \cfrac{1}{Y}\ \ \ \ \ \ \end{matrix}\]
+
+
+El modelo de regresión con variables que pertenezcan a la familia de transformación de potencia queda expresado como:
+\[Y_i^{\lambda}= \beta_0 + \beta_1 X_i + \varepsilon_i\]
+
+##<span style="color:Blue">Pasos para realizar la transformación </span>
+
+ 1) Encontrar el $\lambda$ optimo.
+
+El modelo incluye un párametro adicional $\lambda$ que se estima a travez de estimación por maxima verosimilitud para usar las transformaciones potencia.
+
+En R studio se puede encontrar utilizando la función  `powerTransform()` del paquete  `car` o  `BoxCox.lambda()` del paquete  `forecast`
+
+2) Aplicar la transformación dependiendo del valor de $\lambda$.
+
+Para cada valor de $\lambda$,las observaciones $Y_i^{\lambda}$  son primero estandarizadas lo que se busca es un $\lambda$ que minimice la suma de cuadrados del error.
+
+
+<!-- en otras palabras es usado para 
+modificar la forma de distribución de un conjunto de datos para que se distribuyan más normalmente de modo que las pruebas y los límites de confianza
+que requieren normalidad pueden usarse apropiadamente-->
+
+
+\[W_i=\left\{\begin{matrix} K_1(Y_i^\lambda -1) & \lambda \neq 0 \\ K_2(log_e Y_i) & \lambda=0 \end{matrix}\right.\]
+donde:
+\[K_2=\left ( \prod _{i=1}^{n} Y_i\right )^{1/n}\] es la media geometrica 
+\[K_1 = \frac{1}{\lambda K_{2}^{(\lambda-1)}}\]
+
+En R se realiza la tranformación automatica con las funciones`forecast::BoxCox()`y  `car::bcPower()` sin embargo en esta función la tranformación sufre una pequeña modificación en la forma de estimar.
+
+
+\[W_i=\left\{\begin{matrix} \cfrac{(Y_i^\lambda -1)}{\lambda} & \lambda \neq 0 \\ log( Y_i) & \lambda=0 \end{matrix}\right.\]
+
+La familia Box-Cox con negativos permitivos fue propuesta por Hawkins and Weisberg (2017)
+
+3) Una vez realiza la transformación al conjunto de datos se puede devolver a su escala original con `bcnPowerInverse` o `InvBoxCox()` según sea el caso
+
+<span style="color:Blue"> Ejemplo </span>
+====
+
+
+Para ejemplificar la tranformacion box cox haremos uso de la base de datos cars.
+
+El conjunto de datos tenemos cuenta con dos variables.
+
++ La variable speed, que muestra la velocidad del vehiculo en millas por hora a la empieza a frenar. 
+
++ La vairable dist, la cual es la distancia de frenado.
+
+```{r}
+head(cars)
+```
+
+```{r,fig.align='center'}
+boxplot(cars$speed,cars$dist,col=rainbow(2))
+```
+El boxplot muestra un valor atípico en la variable dist por lo cúal revisaremos usamos el metodo de deteción de outlier mediante el rango intercuartilico.
+
+```{r,echo=TRUE}
+cbind(quantile(cars$dist,0.75)+1.5*IQR(cars$dist),quantile(cars$dist,0.25)-1.5*IQR(cars$dist))
+which(cars$dist>101)
+```
+
+El dato 49 de la variable dist es outlier.
+
+Se realiza comprobación de supuestos para construir un modelo de regresión.
+
+```{r}
+shapiro.test(cars$dist)
+
+```
+
+El data set no cumple con los supuestos sin embargo se realizara un modelo lineal en el cúal la variable respuesta es speed y la explicativa es dist.
+
+```{r}
+model1 <- lm(cars$speed ~ cars$dist)
+summary(model1)
+```
+
+Tanto el intercepto como la distancia de frenado son varibles significativas para el modelos, ademas vemos un $R^2$  ajustado de 0.64 por lo cal no es mejor ajuste.
+
+Debido a que el modelo no cumple los supuestos y no existe un buen ajuste se procede a realizar la transformación de BoxCox
+
+```{r,echo=TRUE}
+library(forecast)
+  cars2<- cars
+transform <- function(x){
+  x <- BoxCox(x, lambda = BoxCox.lambda(x))
+}
+cars2 <- as.data.frame(sapply(cars2, transform))
+```
+
+```{r}
+head(cars2)
+```
+
+Veremos que ha pasado con los datos atipicos y la normalidad
+```{r,fig.align='center'}
+boxplot(cars2,col=rainbow(2))
+```
+
+```{r}
+shapiro.test(cars2$speed)
+shapiro.test(cars2$dist)
+```
+
+
+Ahora haremos el modelo resultante despues de la transformaión.
+```{r}
+model2 <- lm(cars2$dist ~ cars2$speed);model2
+summary(model2)
+```
+
+A pesar de que el intercepto ya no es significativo el $R^2$ del modelo aumento en 0.1 puntos,esto se debe a que se corrigio el problema de la normalidad podemos ajustar un mejor modelo.
+
+Los lambdas usados para transformar la variables son los siguientes:
+
+```{r}
+BoxCox.lambda(cars$speed)
+```
+```{r}
+sse<-c(78.0,77,76,75,73,71,70.4,57.8,48.4,41.4,36.4,34.5,33.1,31.2,30.7,30.6,30.7,31.1,32,32.7,33.9)
+lambda<-seq(-1,1,0.1)
+conjunto<-data.frame(sse,lambda)
+```
+
+
+<span style="color:Blue"> Conclusiones </span>
+==
+
++ El uso de esta transformación no garantiza que los datos obtenidos  se ajusten a una ley de distribución normal.
+
++ Forzar datos a la normalidad solo se debe hacer como verificación,se recomienda pruebas de bondad de ajuste a distribuciones acordes al modelo.
+
+<span style="color:Blue"> Referecias </span>
+==
++ Box, G. E. P. and Cox, D. R. (1964) An analysis of transformations. JRSS B 26 211–246.
+
++ Fox, J. and Weisberg, S. (2019) An R Companion to Applied Regression, Third Edition, Sage.
+
++ Guerrero, V.M. (1993) Time-series analysis supported by power transformations. Journal of Forecasting, 12, 37–48.
+
++ Hawkins, D. and Weisberg, S. (2017) Combining the Box-Cox Power and Generalized Log Transformations to Accomodate Nonpositive Responses In Linear and Mixed-Effects Linear Models South African Statistics Journal, 51, 317-328.
+
++ Weisberg, S. (2014) Applied Linear Regression, Fourth Edition, Wiley Wiley, Chapter 7
+
++ Yeo, In-Kwon and Johnson, Richard (2000) A new family of power transformations to improve normality or symmetry. Biometrika, 87, 954-959.
+
+
+

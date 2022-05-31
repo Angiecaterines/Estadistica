@@ -1,0 +1,28 @@
+library(tidyverse)
+library(FNN)
+
+# Los datos están en línea. Se seleccionan directamente del repositorio
+toyota<-read.table("https://raw.githubusercontent.com/gchoi/Dataset/master/ToyotaCorolla.csv",sep=",",header = T)
+
+toyota<-as_tibble(toyota)
+
+# Se selecciona únicamente las variables Y (KM), X1 (Price) y X2 (Age)
+# Se categoriza la variable KM 
+datos<-toyota %>% select(KM,Age,Price) %>% 
+	mutate(KM=factor(KM))
+
+glimpse(datos)
+
+# Muestra aleatoria del 70% de las filas del conjunto "datos" para el conjunto de entrenamiento
+train.filas<-sample(x=row.names(datos),size = dim(datos)[1]*0.70)
+
+# CONJUNTO DE ENTRENAMIENTO (selección de columnas)
+train.set<-datos[train.filas,]
+dim(train.set)
+
+# CONJUNTO DE PRUEBA
+test.filas<-setdiff(x = row.names(datos),train.filas)
+test.set<-datos[test.filas,]
+dim(test.set)
+
+

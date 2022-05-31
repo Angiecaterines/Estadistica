@@ -1,0 +1,33 @@
+---
+title: "Ejercicios: Detección y tratamiento de NA'sTarea"
+author: "Angie Caterine Sarmiento"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F,message=FALSE,warning=FALSE)
+```
+
+# Ejercicio 1
+
+1) Utilice las funciones complete.cases() y filter() para seleccionar y almacenar en un nuevo data frame newdata2 sólo las observaciones completas de dat1, y en un data frame newdata2 las observaciones incompletas.
+
+2) Realice la misma tarea del literal anterior, pero esta vez utilice la función na.omit() de stats.
+
+3) Cree una función que remueva primero del conjunto de datos dat1 la(s) variable(s) que tenga(n) más del 14% de valores faltantes, y luego remueva las observaciones con más de un 70% de NA’s. Verifique el tamaño del conjunto de datos resultante después de la remoción.
+
+4) Cree una función que remueva primero del conjunto de datos dat1 las observaciones con más de un 50% de NA’, y luego la(s) variable(s) que tenga(n) más del 14% de valores faltantes. Verifique el tamaño del conjunto de datos resultante después de la remoción.
+
+# Ejercicio 2
+
+1) Construya una tabla de resumen con las variables de df.imp comparándolas en términos de los estadísticos: media, mediana, varianza y cuartiles.
+
+2) ¿Qué criterio tendría presente para asegurar o no que las imputaciones fueron aceptables?
+
+3) Utilice la moda para imputar los valores faltantes en la variable colorMAR del conjunto dat1. Compare gráficamente las variables con NA’s y las variables imputadas ¿qué puede observar?
+

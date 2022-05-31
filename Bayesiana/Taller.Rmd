@@ -1,0 +1,77 @@
+---
+title: "MODELAMIENTO BAYESIANO DEL MÁXIMO MEDIANTE EL MODELAMIENTO DE LA DISTRIBUCIÓN GAMMA "
+author: "Angie Caterine Sarmeinto"
+date: "26/4/2021"
+output: html_document
+---
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+#library(bayestestR)#intervalo y pruebas de hipotesis
+library(dplyr)
+library(ggplot2)
+library(readxl)
+require(mcmc)
+require(MASS)
+library(gibbs.met)
+```
+
+Los datos a continuación presentan las precipitaciones para Bogotá medidas durante un año en diferentes estaciones metereologicas.
+
+```{r,echo=FALSE}
+Precip <- read_excel("C:/Users/Hp/Downloads/Precipitación Bogotá.xlsx")
+head(Precip)
+```
+
+Precipitaciones maximas durante el año por estación metereologicas
+
+```{r}
+pmax = apply(Precip[,8:19],1,max)
+head(pmax)
+hist(pmax, freq = F, ylim = c(0,0.007))
+lines(density(pmax, from = 0))
+```
+
+Por la distribución de los datos se decide verificar un ajuste a la distribución gamma
+
+```{r,warning=FALSE,message=FALSE}
+param = fitdistr(pmax, densfun = "gamma")
+#curve(dgamma(x, para$estimate[1], para$estimate[2]), from = 0, to = 1000, add = T, col = 4)
+
+```
+
+
+# Distribución posterior de $\alpha$ y $\beta$
+
+\[\xi(\theta,\underset{\sim}{x}) \ \ \propto  \ \ [-\alpha \  D(\alpha) -1]^{1/2} \ \cfrac{\beta^{n\alpha-1}}{[\Gamma(\alpha)]^n} \ \left [ \prod_{i=1}^n xi \right ]^\alpha e^{-n\beta\bar{x}}\]
+\[g(x)\rightarrow g^-1(y)\]
+\[f_y(y)=f_x(g^{-1}(y))\left | \frac{\mathrm{d} y^{-1}}{\mathrm{d} y} \right |\]
+
+```{r}
+pos1 = function(the, y){
+  a = the[1] ; B = the[2]
+  n = length(y)
+  B^(n*a-1)/(gamma(a))^n*(prod(y))^a*exp(-n*B*mean(y))*(a*trigamma(a)-1)^.5
+}
+
+```
+
+
+Se sabe que $E(X)=\cfrac{\alpha}{\beta}$ se fija $\alpha$ entonces:
+\[m=\cfrac{\alpha}{\beta} \ \ \rightarrow \ \ \beta=\cfrac{\alpha}{m}\]
+
+Sea $g^{-1}(m)=\cfrac{\alpha}{m}$ y $\frac{\partial g^{-1}(m)}{\partial m}=\cfrac{-\alpha}{m^2}$
+\\ \\
+Entonces \\ \\
+
+\[\begin{matrix}
+ \upsilon (\alpha,m|\underset{\sim}{x}) & \propto \xi \left (  \alpha,g^{-1}(m)\right )\left | \frac{\mathrm{d} g^{-1}(m)}{\mathrm{d} m} \right | \\ 
+ & \propto \xi\left (  \alpha,\frac{\alpha}{m}\right )\left ( \frac{\alpha}{m^2} \right )  \ \ \ \  \ \ \ \ \ \ \  \\ 
+ &  \propto \frac{\alpha}{m} \xi \left ( \alpha,\frac{\alpha}{m^2} \right ) \ \ \ \ \ \ \ \ \ \ \ \ \ \
+\end{matrix},l\]
+
+# Distribución a priori
+
+\[\xi(\alpha, \beta |\  \underset{\sim}{x}) \ \ \propto  \ \ [-\alpha \  D(\alpha) -1]^{1/2} \ \cfrac{\beta^{n\alpha-1}}{[\Gamma(\alpha)]^n} \ \left [ \prod_{i=1}^n xi \right ]^\alpha e^{-n\beta\bar{x}}\]
+\[\upsilon (\alpha,m|\underset{\sim}{x}) \ \ \propto \ \ \frac{\alpha}{m}[-\alpha \ D(\alpha)-1]^{1/2} \left ( \frac{\left (  \frac{\alpha}{m} \right )^{n\alpha-1}}{[\Gamma(\alpha)]^n} \right )\left [ \prod_{i=1}^{n}x_i \right ]^{\alpha}e^{-n\left ( \frac{\alpha}{m} \right ) \bar{x}} \]
+\[Ln(\upsilon(\alpha, m |\  \underset{\sim}{x})) \ \ \propto \ \ Ln\left (  \frac{\alpha}{m}\right )+\frac{1}{2}Ln[-\alpha \ D(\alpha) -1] + (n \ \alpha -1)Ln\left ( \frac{\alpha}{m} \right )-n Ln(\Gamma(\alpha))+ \alpha Ln\left ( \prod _{i=1}^n xi\right )- n\left ( \frac{\alpha}{m} \right )\bar{x}\] 
+con $m>0$, \ \ $\alpha \  \epsilon \ \mathbb{R}$ 
+
